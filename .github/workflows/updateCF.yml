@@ -5,11 +5,10 @@ name: Python application
 
 on:
   push:
-  watch:
-      - main
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'
+
 permissions:
   contents: read
 
