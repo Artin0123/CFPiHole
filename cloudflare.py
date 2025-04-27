@@ -24,6 +24,7 @@ def get_lists(name_prefix: str):
     )
 
     logger.debug(f"[get_lists] {r.status_code}")
+    logger.debug(f"[get_lists] response: {r.text}")   # <== 加這行
 
     if r.status_code != 200:
         raise Exception("Failed to get Cloudflare lists")
