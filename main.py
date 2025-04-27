@@ -35,7 +35,7 @@ class App:
             domains = self.convert_to_domain_list(list)
             all_domains = all_domains + domains
 
-        unique_domains = pd.unique(all_domains)
+        unique_domains = pd.unique(pd.Series(all_domains))
 
         # check if the list is already in Cloudflare
         cf_lists = cloudflare.get_lists(self.name_prefix)
