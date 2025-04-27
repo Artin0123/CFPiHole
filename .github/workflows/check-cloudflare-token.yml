@@ -1,7 +1,7 @@
 name: Check Cloudflare Token Validity
 
 on:
-  workflow_dispatch: # 手動觸發
+  workflow_dispatch:
   push:
 
 jobs:
@@ -25,24 +25,24 @@ jobs:
         CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         CF_IDENTIFIER: ${{ secrets.CF_IDENTIFIER }}
       run: |
-        python3 -c "
-import os
-import requests
+        python3 <<EOF
+        import os
+        import requests
 
-token = os.getenv('CF_API_TOKEN')
-account_id = os.getenv('CF_IDENTIFIER')
+        token = os.getenv('CF_API_TOKEN')
+        account_id = os.getenv('CF_IDENTIFIER')
 
-if not token or not account_id:
-    raise Exception('Missing CF_API_TOKEN or CF_IDENTIFIER environment variables.')
+        if not token or not account_id:
+            raise Exception('Missing CF_API_TOKEN or CF_IDENTIFIER environment variables.')
 
-headers = {'Authorization': f'Bearer {token}'}
-url = f'https://api.cloudflare.com/client/v4/accounts/{account_id}/gateway/lists'
+        headers = {'Authorization': f'Bearer {token}'}
+        url = f'https://api.cloudflare.com/client/v4/accounts/{account_id}/gateway/lists'
 
-response = requests.get(url, headers=headers)
-print('Status Code:', response.status_code)
-print('Response:', response.text)
+        response = requests.get(url, headers=headers)
+        print('Status Code:', response.status_code)
+        print('Response:', response.text)
 
-if response.status_code != 200:
-    raise Exception('Cloudflare API token or account ID verification failed.')
-print('✅ Cloudflare token and account ID are valid.')
-        "
+        if response.status_code != 200:
+            raise Exception('Cloudflare API token or account ID verification failed.')
+        print('✅ Cloudflare token and account ID are valid.')
+        EOF
