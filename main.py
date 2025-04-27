@@ -6,6 +6,7 @@ import cloudflare
 import configparser
 import pandas as pd
 import os
+import time
 
 class App:
     def __init__(self):        
@@ -70,6 +71,7 @@ class App:
                 _list = cloudflare.create_list(list_name, chunk)
 
                 cf_lists.append(_list)
+                time.sleep(2)
 
         # get the gateway policies
         cf_policies = cloudflare.get_firewall_policies(self.name_prefix)
