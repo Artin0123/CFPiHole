@@ -59,6 +59,7 @@ class App:
             for l in cf_lists:
                 self.logger.info(f"Deleting list {l['name']}")
                 cloudflare.delete_list(l["id"])
+                time.sleep(2)
 
             cf_lists = []
 
