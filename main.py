@@ -33,6 +33,13 @@ class App:
         # compare the lists size
         if len(unique_domains) == sum([l["count"] for l in cf_lists]):
             self.logger.warning("Lists are the same size, skipping")
+            # Get the gateway policies to check if policy exists
+            cf_policies = cloudflare.get_firewall_policies(self.name_prefix)
+            self.logger.info(f"Number of policies in Cloudflare: {len(cf_policies)}")
+            # If policy exists, we're done
+            if len(cf_policies) > 0:
+                self.logger.info("Policy already exists, nothing to do")
+                return
         else:
             #delete the policy
             cf_policies = cloudflare.get_firewall_policies(self.name_prefix)            
