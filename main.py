@@ -11,6 +11,14 @@ class App:
     def __init__(self):        
         self.name_prefix = f"[CFPihole]"
         self.logger = logging.getLogger("main")
+        self.logger.setLevel(logging.DEBUG)
+        # Add console handler if not exists
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
         self.whitelist = self.loadWhitelist()
     def loadWhitelist(self):
         return open("whitelist.txt", "r").read().split("\n")
@@ -64,6 +72,11 @@ class App:
         # setup the gateway policy
         if len(cf_policies) == 0:
             self.logger.info("Creating firewall policy")
+            self.logger.debug(f"cf_lists: {cf_lists}")
+            if not cf_lists:
+                self.logger.error("No lists available to create policy")
+                return
+            self.logger.debug(f"list_ids: {[l['id'] for l in cf_lists]}")
             cf_policies = cloudflare.create_gateway_policy(f"{self.name_prefix} Block Ads", [l["id"] for l in cf_lists])
         elif len(cf_policies) != 1:
             self.logger.error("More than one firewall policy found")
