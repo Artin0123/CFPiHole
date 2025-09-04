@@ -36,24 +36,24 @@ class App:
         # check tmp dir
         os.makedirs("./tmp", exist_ok=True)
         all_domains = []
-        for list in config["Lists"]:
-            print("Setting list " + list)
-            name_prefix = f"[AdBlock-{list}]"
-            file_path = pathlib.Path("tmp/" + list)
+        for list_name in config["Lists"]:  # 改為 list_name 避免覆蓋內建 list
+            print("Setting list " + list_name)
+            name_prefix = f"[AdBlock-{list_name}]"
+            file_path = pathlib.Path("tmp/" + list_name)
             # 檢查檔案是否已存在並比較大小
             if file_path.exists():
                 current_size = file_path.stat().st_size
-                if list in self.last_sizes and self.last_sizes[list] == current_size:
-                    self.logger.info(f"File {list} size unchanged, skipping download")
-                    domains = self.convert_to_domain_list(list)
+                if list_name in self.last_sizes and self.last_sizes[list_name] == current_size:
+                    self.logger.info(f"File {list_name} size unchanged, skipping download")
+                    domains = self.convert_to_domain_list(list_name)
                 else:
-                    self.download_file(config["Lists"][list], list)
-                    domains = self.convert_to_domain_list(list)
-                    self.last_sizes[list] = current_size  # 更新記錄
+                    self.download_file(config["Lists"][list_name], list_name)
+                    domains = self.convert_to_domain_list(list_name)
+                    self.last_sizes[list_name] = current_size  # 更新記錄
             else:
-                self.download_file(config["Lists"][list], list)
-                domains = self.convert_to_domain_list(list)
-                self.last_sizes[list] = file_path.stat().st_size
+                self.download_file(config["Lists"][list_name], list_name)
+                domains = self.convert_to_domain_list(list_name)
+                self.last_sizes[list_name] = file_path.stat().st_size
             all_domains = all_domains + domains
         unique_domains = pd.unique(pd.Series(all_domains))
         # chunk the domains into lists of 1000
