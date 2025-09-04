@@ -182,6 +182,10 @@ class App:
             # Check whitelist
             if domain in self.whitelist:
                 continue
+            # Validate hostname
+            if not self.is_valid_hostname(domain):
+                self.logger.debug(f"Invalid domain: {domain}")
+                continue
             domains.append(domain)
         self.logger.info(f"Number of domains: {len(domains)}")
         return domains

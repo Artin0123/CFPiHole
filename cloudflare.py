@@ -72,6 +72,18 @@ def update_list(list_id: str, name: str, domains: List[str]):
     return r.json()["result"]
 
 
+def delete_list(list_id: str):
+    r = session.delete(
+        f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/lists/{list_id}",
+    )
+
+    logger.debug(f"[delete_list] {r.status_code}")
+    if r.status_code != 200:
+        raise Exception("Failed to delete Cloudflare list: " + str(r.content))
+
+    return r.json()["result"]
+
+
 def get_firewall_policies(name: str):
     r = session.get(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/rules",
