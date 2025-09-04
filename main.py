@@ -92,6 +92,12 @@ class App:
                     cf_lists[i] = _list
                 time.sleep(1)
         else:
+            # Delete existing policies first to avoid list deletion conflicts
+            for p in cf_policies:
+                self.logger.info(f"Deleting policy {p['name']}")
+                cloudflare.delete_firewall_policy(p["id"])
+                time.sleep(1)
+            
             # Delete existing lists and create new ones
             for l in cf_lists:
                 self.logger.info(f"Deleting list {l['name']}")
