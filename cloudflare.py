@@ -53,19 +53,26 @@ def create_list(name: str, domains: List[str]):
     return r.json()["result"]
 
 
-def delete_list(list_id: str):
-    r = session.delete(
+def update_list(list_id: str, name: str, domains: List[str]):
+    r = session.put(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/lists/{list_id}",
+        json={
+            "name": name,
+            "description": "Updated by script.",
+            "type": "DOMAIN",
+            "items": [*map(lambda d: {"value": d}, domains)],
+        },
     )
 
-    logger.debug(f"[delete_list] {r.status_code}")
-    if r.status_code != 200:
-        raise Exception("Failed to delete Cloudflare list: " + str(r.content))
+    logger.debug(f"[update_list] {r.status_code}")
 
+    if r.status_code != 200:
+        raise Exception("Failed to update Cloudflare list: " + str(r.content))
+    print("Updated list " + name)
     return r.json()["result"]
 
 
-def get_firewall_policies(name_prefix: str):
+def get_firewall_policies(name: str):
     r = session.get(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/rules",
     )
@@ -77,7 +84,7 @@ def get_firewall_policies(name_prefix: str):
 
     lists = r.json()["result"] or []
 
-    return [l for l in lists if l["name"].startswith(name_prefix)]
+    return [l for l in lists if l["name"] == name]
 
 def delete_firewall_policy(policy_id: str):
     r = session.delete(
@@ -92,14 +99,14 @@ def delete_firewall_policy(policy_id: str):
     return r.json()["result"]
 
 
-def create_gateway_policy(name: str, list_ids: List[str]):
+def create_gateway_policy(name: str, list_ids: List[str], enabled: bool = True):
     r = session.post(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/rules",
         json={
             "name": name,
             "description": "Created by script.",
             "action": "block",
-            "enabled": True,
+            "enabled": enabled,
             "filters": ["dns"],
             "traffic": "or".join([f"any(dns.domains[*] in ${l})" for l in list_ids]),
             "rule_settings": {
@@ -116,13 +123,13 @@ def create_gateway_policy(name: str, list_ids: List[str]):
     return r.json()["result"]
 
 
-def update_gateway_policy(name: str, policy_id: str, list_ids: List[str]):
+def update_gateway_policy(name: str, policy_id: str, list_ids: List[str], enabled: bool = True):
     r = session.put(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/rules/{policy_id}",
         json={
             "name": name,
             "action": "block",
-            "enabled": True,
+            "enabled": enabled,
             "traffic": "or".join([f"any(dns.domains[*] in ${l})" for l in list_ids]),
         },
     )

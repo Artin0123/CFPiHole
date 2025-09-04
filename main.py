@@ -7,11 +7,13 @@ import configparser
 import pandas as pd
 import os
 import time
-
+import hashlib  # 新增用於計算哈希
 
 class App:
     def __init__(self):
         self.name_prefix = f"[CFPihole]"
+        self.list_name_base = "CFPiHole Domains"
+        self.policy_name = "CFPiHole Blocklist Policy"
         self.logger = logging.getLogger("main")
         self.logger.setLevel(logging.DEBUG)
         # Add console handler if not exists
@@ -23,6 +25,7 @@ class App:
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
         self.whitelist = self.loadWhitelist()
+        self.last_sizes = {}  # 記錄上次檔案大小
 
     def loadWhitelist(self):
         return open("whitelist.txt", "r").read().split("\n")
@@ -36,63 +39,87 @@ class App:
         for list in config["Lists"]:
             print("Setting list " + list)
             name_prefix = f"[AdBlock-{list}]"
-            self.download_file(config["Lists"][list], list)
-            domains = self.convert_to_domain_list(list)
+            file_path = pathlib.Path("tmp/" + list)
+            # 檢查檔案是否已存在並比較大小
+            if file_path.exists():
+                current_size = file_path.stat().st_size
+                if list in self.last_sizes and self.last_sizes[list] == current_size:
+                    self.logger.info(f"File {list} size unchanged, skipping download")
+                    domains = self.convert_to_domain_list(list)
+                else:
+                    self.download_file(config["Lists"][list], list)
+                    domains = self.convert_to_domain_list(list)
+                    self.last_sizes[list] = current_size  # 更新記錄
+            else:
+                self.download_file(config["Lists"][list], list)
+                domains = self.convert_to_domain_list(list)
+                self.last_sizes[list] = file_path.stat().st_size
             all_domains = all_domains + domains
         unique_domains = pd.unique(pd.Series(all_domains))
-        # check if the list is already in Cloudflare
-        cf_lists = cloudflare.get_lists(self.name_prefix)
-        self.logger.info(f"Number of lists in Cloudflare: {len(cf_lists)}")
-        # compare the lists size
-        if len(unique_domains) == sum([l["count"] for l in cf_lists]):
-            self.logger.warning("Lists are the same size, skipping")
-            # Get the gateway policies to check if policy exists
-            cf_policies = cloudflare.get_firewall_policies(self.name_prefix)
-            self.logger.info(
-                f"Number of policies in Cloudflare: {len(cf_policies)}")
-            # If policy exists, we're done
-            if len(cf_policies) > 0:
-                self.logger.info("Policy already exists, nothing to do")
-                return
+        # chunk the domains into lists of 1000
+        chunks = list(self.chunk_list(unique_domains, 1000))
+        num_chunks = len(chunks)
+
+        # Get existing lists
+        cf_lists = cloudflare.get_lists(self.list_name_base)
+        self.logger.info(f"Number of existing lists: {len(cf_lists)}")
+        self.logger.info(f"Number of needed chunks: {num_chunks}")
+
+        # Get existing policies
+        cf_policies = cloudflare.get_firewall_policies(self.policy_name)
+        self.logger.info(f"Number of existing policies: {len(cf_policies)}")
+
+        # Record the enabled status of the policy
+        policy_enabled = True  # default
+        if cf_policies:
+            policy_enabled = cf_policies[0]["enabled"]
+            self.logger.info(f"Existing policy enabled: {policy_enabled}")
+
+        # Handle lists
+        if len(cf_lists) == num_chunks:
+            # Update existing lists
+            for i, chunk in enumerate(chunks):
+                list_name = f"{self.list_name_base} {i+1}"
+                existing_list = next((l for l in cf_lists if l["name"] == list_name), None)
+                if existing_list:
+                    self.logger.info(f"Updating list {list_name}")
+                    cloudflare.update_list(existing_list["id"], list_name, chunk)
+                    cf_lists[i] = existing_list  # update the list
+                else:
+                    # If name doesn't match, create new
+                    self.logger.info(f"Creating list {list_name}")
+                    _list = cloudflare.create_list(list_name, chunk)
+                    cf_lists[i] = _list
+                time.sleep(1)
         else:
-            # delete the policy
-            cf_policies = cloudflare.get_firewall_policies(self.name_prefix)
-            if len(cf_policies) > 0:
-                cloudflare.delete_firewall_policy(cf_policies[0]["id"])
-            # delete the lists
+            # Delete existing lists and create new ones
             for l in cf_lists:
                 self.logger.info(f"Deleting list {l['name']}")
                 cloudflare.delete_list(l["id"])
                 time.sleep(1)
             cf_lists = []
-            # chunk the domains into lists of 1000 and create them
-            for chunk in self.chunk_list(unique_domains, 1000):
-                list_name = f"{self.name_prefix} {len(cf_lists) + 1}"
+            for i, chunk in enumerate(chunks):
+                list_name = f"{self.list_name_base} {i+1}"
                 self.logger.info(f"Creating list {list_name}")
                 _list = cloudflare.create_list(list_name, chunk)
                 cf_lists.append(_list)
                 time.sleep(1)
-        # get the gateway policies
-        cf_policies = cloudflare.get_firewall_policies(self.name_prefix)
-        self.logger.info(
-            f"Number of policies in Cloudflare: {len(cf_policies)}")
-        # setup the gateway policy
-        if len(cf_policies) == 0:
+
+        # Handle policy
+        if cf_policies:
+            # Update existing policy
+            self.logger.info("Updating firewall policy")
+            cloudflare.update_gateway_policy(
+                self.policy_name, cf_policies[0]["id"], [l["id"] for l in cf_lists], policy_enabled)
+        else:
+            # Create new policy
             self.logger.info("Creating firewall policy")
-            self.logger.debug(f"cf_lists: {cf_lists}")
             if not cf_lists:
                 self.logger.error("No lists available to create policy")
                 return
-            self.logger.debug(f"list_ids: {[l['id'] for l in cf_lists]}")
-            cf_policies = cloudflare.create_gateway_policy(
-                f"{self.name_prefix} Block Ads", [l["id"] for l in cf_lists])
-        elif len(cf_policies) != 1:
-            self.logger.error("More than one firewall policy found")
-            raise Exception("More than one firewall policy found")
-        else:
-            self.logger.info("Updating firewall policy")
-            cloudflare.update_gateway_policy(
-                f"{self.name_prefix} Block Ads", cf_policies[0]["id"], [l["id"] for l in cf_lists])
+            cloudflare.create_gateway_policy(
+                self.policy_name, [l["id"] for l in cf_lists], policy_enabled)
+
         self.logger.info("Done")
 
     def is_valid_hostname(self, hostname):
@@ -162,7 +189,6 @@ class App:
     def chunk_list(self, _list: List[str], n: int):
         for i in range(0, len(_list), n):
             yield _list[i: i + n]
-
 
 if __name__ == "__main__":
     app = App()
