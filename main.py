@@ -8,7 +8,6 @@ import pandas as pd
 import os
 import time
 
-
 class App:
     def __init__(self):
         self.name_prefix = f"[CFPihole]"
@@ -19,7 +18,8 @@ class App:
             handler = logging.StreamHandler()
             handler.setLevel(logging.DEBUG)
             formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
         self.whitelist = self.loadWhitelist()
@@ -29,7 +29,7 @@ class App:
 
     def run(self):
         config = configparser.ConfigParser()
-        config.read('config.ini')
+        config.read("config.ini")
         # check tmp dir
         os.makedirs("./tmp", exist_ok=True)
         all_domains = []
@@ -48,8 +48,7 @@ class App:
             self.logger.warning("Lists are the same size, skipping")
             # Get the gateway policies to check if policy exists
             cf_policies = cloudflare.get_firewall_policies(self.name_prefix)
-            self.logger.info(
-                f"Number of policies in Cloudflare: {len(cf_policies)}")
+            self.logger.info(f"Number of policies in Cloudflare: {len(cf_policies)}")
             # If policy exists, we're done
             if len(cf_policies) > 0:
                 self.logger.info("Policy already exists, nothing to do")
@@ -74,8 +73,7 @@ class App:
                 time.sleep(1)
         # get the gateway policies
         cf_policies = cloudflare.get_firewall_policies(self.name_prefix)
-        self.logger.info(
-            f"Number of policies in Cloudflare: {len(cf_policies)}")
+        self.logger.info(f"Number of policies in Cloudflare: {len(cf_policies)}")
         # setup the gateway policy
         if len(cf_policies) == 0:
             self.logger.info("Creating firewall policy")
@@ -85,23 +83,27 @@ class App:
                 return
             self.logger.debug(f"list_ids: {[l['id'] for l in cf_lists]}")
             cf_policies = cloudflare.create_gateway_policy(
-                f"{self.name_prefix} Block Ads", [l["id"] for l in cf_lists])
+                f"{self.name_prefix} Block Ads", [l["id"] for l in cf_lists]
+            )
         elif len(cf_policies) != 1:
             self.logger.error("More than one firewall policy found")
             raise Exception("More than one firewall policy found")
         else:
             self.logger.info("Updating firewall policy")
             cloudflare.update_gateway_policy(
-                f"{self.name_prefix} Block Ads", cf_policies[0]["id"], [l["id"] for l in cf_lists])
+                f"{self.name_prefix} Block Ads",
+                cf_policies[0]["id"],
+                [l["id"] for l in cf_lists],
+            )
         self.logger.info("Done")
 
     def is_valid_hostname(self, hostname):
         import re
+
         if len(hostname) > 255:
             return False
         hostname = hostname.rstrip(".")
-        allowed = re.compile(
-            r'^[a-z0-9]([a-z0-9\-\_]{0,61}[a-z0-9])?$', re.IGNORECASE)
+        allowed = re.compile(r"^[a-z0-9]([a-z0-9\-\_]{0,61}[a-z0-9])?$", re.IGNORECASE)
         labels = hostname.split(".")
         # the TLD must not be all-numeric
         if re.match(r"^[0-9]+$", labels[-1]):
@@ -116,7 +118,7 @@ class App:
         self.logger.info(f"File size: {path.stat().st_size}")
 
     def convert_to_domain_list(self, file_name: str):
-        with open("tmp/"+file_name, "r") as f:
+        with open("tmp/" + file_name, "r") as f:
             data = f.read()
         # check if the file is a hosts file or a list of domain
         # Only check the first few non-comment lines for hosts file format
@@ -130,7 +132,11 @@ class App:
             parts = line.split()
             if len(parts) >= 2:
                 first_part = parts[0]
-                if first_part in ["127.0.0.1", "::1", "0.0.0.0"] or first_part.startswith("127."):
+                if first_part in [
+                    "127.0.0.1",
+                    "::1",
+                    "0.0.0.0",
+                ] or first_part.startswith("127."):
                     is_hosts_file = True
                     break
             # If we find a line that doesn't look like hosts format, break
@@ -139,7 +145,12 @@ class App:
         domains = []
         for line in data.splitlines():
             # skip comments and empty lines
-            if line.startswith("#") or line.startswith(";") or line == "\n" or line == "":
+            if (
+                line.startswith("#")
+                or line.startswith(";")
+                or line == "\n"
+                or line == ""
+            ):
                 continue
             if is_hosts_file:
                 # remove the ip address and the trailing newline
@@ -161,8 +172,7 @@ class App:
 
     def chunk_list(self, _list: List[str], n: int):
         for i in range(0, len(_list), n):
-            yield _list[i: i + n]
-
+            yield _list[i : i + n]
 
 if __name__ == "__main__":
     app = App()

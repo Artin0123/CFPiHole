@@ -5,8 +5,8 @@ import os
 
 logger = logging.getLogger("cloudflare")
 
-
 from dotenv import load_dotenv
+
 load_dotenv()
 
 CF_API_TOKEN = os.getenv("CF_API_TOKEN") or os.environ.get("CF_API_TOKEN")
@@ -16,7 +16,6 @@ if not CF_API_TOKEN or not CF_IDENTIFIER:
 
 session = requests.Session()
 session.headers.update({"Authorization": f"Bearer {CF_API_TOKEN}"})
-
 
 def get_lists(name_prefix: str):
     r = session.get(
@@ -33,7 +32,6 @@ def get_lists(name_prefix: str):
 
     return [l for l in lists if l["name"].startswith(name_prefix)]
 
-
 def create_list(name: str, domains: List[str]):
     r = session.post(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/lists",
@@ -49,9 +47,8 @@ def create_list(name: str, domains: List[str]):
 
     if r.status_code != 200:
         raise Exception("Failed to create Cloudflare list: " + str(r.content))
-    print ("Created list " + name)
+    print("Created list " + name)
     return r.json()["result"]
-
 
 def delete_list(list_id: str):
     r = session.delete(
@@ -63,7 +60,6 @@ def delete_list(list_id: str):
         raise Exception("Failed to delete Cloudflare list: " + str(r.content))
 
     return r.json()["result"]
-
 
 def get_firewall_policies(name_prefix: str):
     r = session.get(
@@ -91,7 +87,6 @@ def delete_firewall_policy(policy_id: str):
 
     return r.json()["result"]
 
-
 def create_gateway_policy(name: str, list_ids: List[str]):
     r = session.post(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/rules",
@@ -114,7 +109,6 @@ def create_gateway_policy(name: str, list_ids: List[str]):
         raise Exception("Failed to create Cloudflare firewall policy")
 
     return r.json()["result"]
-
 
 def update_gateway_policy(name: str, policy_id: str, list_ids: List[str]):
     r = session.put(

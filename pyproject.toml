@@ -1,3 +1,7 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.poetry]
 name = "cfpihole"
 version = "0.1.0"
@@ -6,14 +10,9 @@ authors = ["Your Name <you@example.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-requests = "^2.32.2"
 configparser = "^7.0.0"
-poetry-dotenv = "^0.4.0"
-python-dotenv = "^1.0.1"
 pandas = "^2.2.2"
-
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+poetry-dotenv = "^0.4.0"
+python = "^3.11"
+python-dotenv = "^1.0.1"
+requests = "^2.32.2"
