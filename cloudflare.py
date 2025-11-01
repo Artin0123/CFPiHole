@@ -17,6 +17,7 @@ if not CF_API_TOKEN or not CF_IDENTIFIER:
 session = requests.Session()
 session.headers.update({"Authorization": f"Bearer {CF_API_TOKEN}"})
 
+
 def get_lists(name_prefix: str):
     r = session.get(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/lists",
@@ -32,6 +33,7 @@ def get_lists(name_prefix: str):
 
     return [l for l in lists if l["name"].startswith(name_prefix)]
 
+
 def create_list(name: str, domains: List[str]):
     r = session.post(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/lists",
@@ -46,9 +48,11 @@ def create_list(name: str, domains: List[str]):
     logger.debug(f"[create_list] {r.status_code}")
 
     if r.status_code != 200:
-        raise Exception("Failed to create Cloudflare list: " + str(r.content))
+        # Surface full response text to aid debugging when items are rejected
+        raise Exception("Failed to create Cloudflare list: " + r.text)
     print("Created list " + name)
     return r.json()["result"]
+
 
 def delete_list(list_id: str):
     r = session.delete(
@@ -60,6 +64,7 @@ def delete_list(list_id: str):
         raise Exception("Failed to delete Cloudflare list: " + str(r.content))
 
     return r.json()["result"]
+
 
 def get_firewall_policies(name_prefix: str):
     r = session.get(
@@ -75,6 +80,7 @@ def get_firewall_policies(name_prefix: str):
 
     return [l for l in lists if l["name"].startswith(name_prefix)]
 
+
 def delete_firewall_policy(policy_id: str):
     r = session.delete(
         f"https://api.cloudflare.com/client/v4/accounts/{CF_IDENTIFIER}/gateway/rules/{policy_id}",
@@ -86,6 +92,7 @@ def delete_firewall_policy(policy_id: str):
         raise Exception("Failed to delete Cloudflare policy")
 
     return r.json()["result"]
+
 
 def create_gateway_policy(name: str, list_ids: List[str]):
     r = session.post(
@@ -109,6 +116,7 @@ def create_gateway_policy(name: str, list_ids: List[str]):
         raise Exception("Failed to create Cloudflare firewall policy")
 
     return r.json()["result"]
+
 
 def update_gateway_policy(name: str, policy_id: str, list_ids: List[str]):
     r = session.put(
